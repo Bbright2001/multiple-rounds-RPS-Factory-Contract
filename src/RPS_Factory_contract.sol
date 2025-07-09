@@ -8,8 +8,10 @@ contract RPSGame{
   address player2;
   uint256 roundDuration = 30 seconds;
   bool isGameOver;
+  uint256 startTime;
 
   gameRound currentRound;
+
 
   mapping (address => uint) public scores;
   mapping (address => bytes32) public commitedMoves;
@@ -21,6 +23,25 @@ contract RPSGame{
     player1 = msg.sender;
     player2 = _player2;
     currentRound = gameRound.first;
+  }
+
+  function commitMove(string memory _move) external {
+    require(!(isGameOver), "Game Over");
+    require(msg.sender == player1 || msg.sender == player2, "You aren't allowed to participate");
+    require(hasCommitted[msg.sender], "You can't commit a move more than one");
+    require(block.timestamp < startTime + roundDuration, "You lost this round");
+
+    bytes32 hash = keccak256(bytes(_move));
+
+    startTime = block.timestamp;
+
+    if(msg.sender == player1){
+        commitedMoves[player1] = hash;
+        hasCommitted[player1] = true;
+    }else{
+        commitedMoves[player2] = hash;
+        hasCommitted[player2] = true;
+    }
   }
 
 }
