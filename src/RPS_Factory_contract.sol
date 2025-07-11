@@ -2,50 +2,97 @@
 pragma solidity ^0.8.30;
 
 contract RPSGame{
-    enum  gameRound {first, second, third, fourth}
+
+ enum roundResult{
+      draw,
+      player1Wins,
+      player2Wins
+ }
 
   address player1;
   address player2;
-  uint256 roundDuration = 30 seconds;
-  bool isGameOver;
-  uint256 startTime;
+  uint256 maxRound;
+  uint256 currentRound;
+  roundResult result;
 
-  gameRound currentRound;
+  mapping(address => uint256) public scores;
+  mapping(uint256 => mapping(address => string)) movesPerRound;
+  mapping(address => bool) public hasPlayed;
+  bool gameOver = false;
 
-
-  mapping (address => uint) public scores;
-  mapping (address => bytes32) public commitedMoves;
-  mapping (address => string) public revealedMoves;
-  mapping (address => bool) public hasCommitted;
-  mapping (address => bool) public hasReavealed;
-
-  constructor(address _player2) {
+  constructor(address _player2){
     player1 = msg.sender;
     player2 = _player2;
-    currentRound = gameRound.first;
+
+    maxRound = 4;
+    currentRound = 1;
   }
+  //what does this function do?
+  //submit the player moves for commitment for evaluation
+  //arguments: string move
 
-  function commitMove(string memory _move) external {
-    require(!(isGameOver), "Game Over");
-    require(msg.sender == player1 || msg.sender == player2, "You aren't allowed to participate");
-    require(hasCommitted[msg.sender], "You can't commit a move more than one");
-    require(block.timestamp < startTime + roundDuration, "You lost this round");
+  function submitMoves(string memory move) external { 
+    require(msg.sender == player1 || msg.sender == player2, "invalid player address" );
+    require(gameOver,"Game isn't over");
+    require(!hasPlayed[msg.sender], "can't play twice");
+    require( invalidMove(move));
+    
+    movesPerRound[1][msg.sender] = move;
+    hasPlayed[msg.sender] = true;
 
-    bytes32 hash = keccak256(bytes(_move));
 
-    startTime = block.timestamp;
+    revealMove(msg.sender);
 
-    if(msg.sender == player1){
-        commitedMoves[player1] = hash;
-        hasCommitted[player1] = true;
-    }else{
-        commitedMoves[player2] = hash;
-        hasCommitted[player2] = true;
+  }
+  // what does this function do?
+  //parameters: the player move (rock, paper, scissors)
+  //check the move played by the player..to see if it is an invalid move
+  
+  function invalidMove(string memory _move) internal pure returns (bool) {
+      bytes32 moveHash = keccak256(bytes(_move));
+
+      return (
+         moveHash == keccak256(bytes("rock")) ||
+        moveHash == keccak256(bytes("paper")) ||
+        moveHash == keccak256(bytes("scissors")) 
+      );
+  }
+  //What does this function do?
+  // reveals the move that the player played,
+  //parameter: the address of the player
+   
+   function revealMove(address _player) internal view returns (string memory){
+    require(!hasPlayed[_player], "player hasn't played");
+
+     return (movesPerRound[1][_player]);
+   }
+
+   //Function Name: evaluateWinnner;
+   // function: compares player moves and evaluates winner for a round
+   //
+    function evaluateWinner() internal {
+        string memory move1 = movesPerRound[1][player1];
+        string memory move2 = movesPerRound[1][player2];
+
+        if(keccak256(bytes(move1)) == keccak256(bytes(move2))){
+           result = roundResult.draw;
+        } else if(
+          compare(move1, "scissor") && compare(move2, "paper") ||
+          compare(move1, "paper") && compare(move2, "rock") || 
+          compare(move1, "rock") && compare(move2, "scissor")
+      ){
+        result = roundResult.player1Wins;
+      } else{
+        result = roundResult.player2Wins;
+      }
     }
-  }
+
+    function compare(string memory a, string memory b) internal pure returns (bool){
+       return keccak256(bytes(a)) == keccak256(bytes(b));
+    }
+
 
 }
-
 
 contract factory{
     //Array to store deployed child contracts
