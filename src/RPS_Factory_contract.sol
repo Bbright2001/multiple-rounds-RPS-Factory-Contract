@@ -9,23 +9,20 @@ contract RPSGame{
       player2Wins
  }
 
-  address player1;
-  address player2;
-  uint256 maxRound;
-  uint256 currentRound;
+  address immutable player1;
+  address immutable player2;
+  uint8 constant maxRound = 4;
+  uint8 currentRound = 1;
   roundResult result;
 
   mapping(address => uint256) public scores;
   mapping(uint256 => mapping(address => string)) movesPerRound;
   mapping(address => bool) public hasPlayed;
-  bool gameOver = false;
+  bool gameOver;
 
   constructor(address _player2){
     player1 = msg.sender;
     player2 = _player2;
-
-    maxRound = 4;
-    currentRound = 1;
   }
   //what does this function do?
   //submit the player moves for commitment for evaluation
@@ -33,17 +30,28 @@ contract RPSGame{
 
   function submitMoves(string memory move) external { 
     require(msg.sender == player1 || msg.sender == player2, "invalid player address" );
-    require(gameOver,"Game isn't over");
+    require(!gameOver,"Game isn't over");
     require(!hasPlayed[msg.sender], "can't play twice");
     require( invalidMove(move));
     
-    movesPerRound[1][msg.sender] = move;
+    movesPerRound[currentRound][msg.sender] = move;
     hasPlayed[msg.sender] = true;
 
 
-    revealMove(msg.sender);
+     if(hasPlayed[player1] || hasPlayed[player2]) return;
 
-  }
+   address winner = evaluateWinner();
+    if(winner == address(0)) scores[winner]++;
+
+    hasPlayed[player1] = false;
+    hasPlayed[player2] = false;
+
+    currentRound++;
+    
+     if(currentRound >= maxRound || scores[player1] == 3 || scores[player2] == 3){
+       gameOver = true;
+     }
+  } 
   // what does this function do?
   //parameters: the player move (rock, paper, scissors)
   //check the move played by the player..to see if it is an invalid move
@@ -54,36 +62,31 @@ contract RPSGame{
       return (
          moveHash == keccak256(bytes("rock")) ||
         moveHash == keccak256(bytes("paper")) ||
-        moveHash == keccak256(bytes("scissors")) 
+        moveHash == keccak256(bytes("scissors"))
       );
   }
-  //What does this function do?
-  // reveals the move that the player played,
-  //parameter: the address of the player
-   
-   function revealMove(address _player) internal view returns (string memory){
-    require(!hasPlayed[_player], "player hasn't played");
-
-     return (movesPerRound[1][_player]);
-   }
+  
 
    //Function Name: evaluateWinnner;
    // function: compares player moves and evaluates winner for a round
    //
-    function evaluateWinner() internal {
-        string memory move1 = movesPerRound[1][player1];
-        string memory move2 = movesPerRound[1][player2];
+    function evaluateWinner() internal returns(address){
+        string memory move1 = movesPerRound[currentRound][player1];
+        string memory move2 = movesPerRound[currentRound][player2];
 
         if(keccak256(bytes(move1)) == keccak256(bytes(move2))){
            result = roundResult.draw;
+           return address(0);
         } else if(
           compare(move1, "scissor") && compare(move2, "paper") ||
           compare(move1, "paper") && compare(move2, "rock") || 
           compare(move1, "rock") && compare(move2, "scissor")
       ){
         result = roundResult.player1Wins;
+        return player1;
       } else{
         result = roundResult.player2Wins;
+        return player2;
       }
     }
 
