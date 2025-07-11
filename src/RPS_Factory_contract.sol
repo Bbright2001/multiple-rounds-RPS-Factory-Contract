@@ -9,8 +9,8 @@ contract RPSGame{
       player2Wins
  }
 
-  address immutable player1;
-  address immutable player2;
+  address public immutable player1;
+  address public immutable player2;
   uint8 constant maxRound = 4;
   uint8 currentRound = 1;
   roundResult result;
@@ -32,7 +32,7 @@ contract RPSGame{
     require(msg.sender == player1 || msg.sender == player2, "invalid player address" );
     require(!gameOver,"Game isn't over");
     require(!hasPlayed[msg.sender], "can't play twice");
-    require( invalidMove(move));
+    require( invalidMove(move), "Invalid move");
     
     movesPerRound[currentRound][msg.sender] = move;
     hasPlayed[msg.sender] = true;
