@@ -29,19 +29,26 @@ contract RPSGame{
   //arguments: string move
 
   function submitMoves(string memory move) external { 
+    // THE "GUARD -> ACTION -> UPDATE STATE "
+    //1. GUARD
     require(msg.sender == player1 || msg.sender == player2, "invalid player address" );
     require(!gameOver,"Game isn't over");
     require(!hasPlayed[msg.sender], "can't play twice");
     require( invalidMove(move), "Invalid move");
     
+    // 2. ACTION
     movesPerRound[currentRound][msg.sender] = move;
+    
+    // 3. UPDATE STATE
     hasPlayed[msg.sender] = true;
 
 
-     if(hasPlayed[player1] || hasPlayed[player2]) return;
+     if( !(hasPlayed[player1] && hasPlayed[player2]) ) return;
 
    address winner = evaluateWinner();
-    if(winner == address(0)) scores[winner]++;
+    if(winner == address(0)){
+      scores[winner]++;
+    } 
 
     hasPlayed[player1] = false;
     hasPlayed[player2] = false;
